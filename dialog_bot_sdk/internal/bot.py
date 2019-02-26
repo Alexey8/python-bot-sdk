@@ -1,10 +1,11 @@
 from concurrent.futures import ThreadPoolExecutor
 from .service import AuthenticatedService
-from dialog_api import registration_pb2, registration_pb2_grpc,\
+from dialog_bot_sdk.dialog_api import registration_pb2, registration_pb2_grpc,\
                        sequence_and_updates_pb2_grpc,\
                        authentication_pb2, authentication_pb2_grpc,\
                        contacts_pb2_grpc, search_pb2_grpc, messaging_pb2_grpc,\
-                       media_and_files_pb2_grpc
+                       media_and_files_pb2_grpc, users_pb2_grpc
+from dialog_bot_sdk.uploading import Uploading
 
 
 class InternalBot(object):
@@ -23,8 +24,10 @@ class InternalBot(object):
         self.auth = self.wrap_service(authentication_pb2_grpc.AuthenticationStub)
         self.contacts = self.wrap_service(contacts_pb2_grpc.ContactsStub)
         self.search = self.wrap_service(search_pb2_grpc.SearchStub)
+        self.users = self.wrap_service(users_pb2_grpc.UsersStub)
         self.token = self.get_session_token()
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=10)
+        self.uploading = Uploading(self)
 
     def authorize(self, bot_token):
         """Authorization function for Internal bot instance.
@@ -35,6 +38,11 @@ class InternalBot(object):
         return self.auth.StartTokenAuth(authentication_pb2.RequestStartTokenAuth(
             token=bot_token,
             app_id=self.app_id
+        ))
+
+    def anonymous_authorize(self, name='dumb'):
+        return self.auth.StartAnonymousAuth(authentication_pb2.RequestStartAnonymousAuth(
+            name=name
         ))
 
     def get_session_token(self):
@@ -49,7 +57,6 @@ class InternalBot(object):
                 device_title=self.app_title
             )
         )
-        print(registration_response.token)
         return registration_response.token
 
     def wrap_service(self, stub_func):

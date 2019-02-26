@@ -1,4 +1,4 @@
-from dialog_api import messaging_pb2
+from .dialog_api import messaging_pb2
 from google.protobuf import wrappers_pb2
 
 
@@ -24,11 +24,13 @@ class InteractiveMediaSelect(object):
     """Select control class.
 
     """
-    def __init__(self, label=None, default_value=None, options=None):
-        assert options is not None
+    def __init__(self, options, label=None, default_value=None):
+        if options is None:
+            raise AttributeError('Attribute \'options\' can\'t be None.')
+
+        self.options = options
         self.label = label
         self.default_value = default_value
-        self.options = options
 
     def render(self, target):
         """Render method for select
@@ -39,7 +41,7 @@ class InteractiveMediaSelect(object):
             target.label.value = self.label
         if self.default_value is not None:
             target.default_value.value = self.default_value
-        for value, label in self.options.iteritems():
+        for value, label in self.options.items():
             opt = target.options.add()
             opt.value = value
             opt.label = label
@@ -84,8 +86,8 @@ class InteractiveMedia(object):
     # style one of ['default', 'primary', 'danger', None]
     # widget = InteractiveMediaButton | InteractiveMediaSelect
 
-    def __init__(self, id, widget, style=None, confirm=None):
-        self.id = id
+    def __init__(self, media_id, widget, style=None, confirm=None):
+        self.media_id = media_id
         self.widget = widget
         self.style = style
         self.confirm = confirm
@@ -96,7 +98,7 @@ class InteractiveMedia(object):
         :param target: target interactive object
         :return: wrapped interactive object
         """
-        target.id = str(self.id)
+        target.id = str(self.media_id)
         target.style = self.style_map.get(self.style, messaging_pb2.INTERACTIVEMEDIASTYLE_UNKNOWN)
         if self.widget is not None:
             if isinstance(self.widget, InteractiveMediaButton):
@@ -112,9 +114,10 @@ class InteractiveMediaGroup(object):
     """Wrapper class for interactive object grouping.
 
     """
-    # translations = {'lang': [{'id': 'value'}]} dict
     def __init__(self, actions, title=None, description=None, translations=None):
-        assert isinstance(actions, list)
+        if not isinstance(actions, list):
+            raise AttributeError('Actions must be an iterable.')
+
         self.actions = actions
         self.title = title
         self.description = description
@@ -133,8 +136,9 @@ class InteractiveMediaGroup(object):
             media.title.value = self.title
         if self.description is not None:
             media.description.value = self.description
-        for lang, trans in self.translations.items():
-            group = messaging_pb2.InteractiveMediaTranslationGroup(lang=lang)
-            for idx, value in trans.items():
-                group.messages.append(messaging_pb2.InteractiveMediaTranslation(id=idx, value=value))
-            media.translations.append(group)
+        if self.translations:
+            for lang, trans in self.translations.items():
+                group = messaging_pb2.InteractiveMediaTranslationGroup(lang=lang)
+                for idx, value in trans.items():
+                    group.messages.append(messaging_pb2.InteractiveMediaTranslation(id=idx, value=value))
+                media.translations.append(group)
